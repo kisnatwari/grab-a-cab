@@ -1,44 +1,101 @@
-import * as React from "react"
-
-import { Button } from "@/components/ui/button"
+"use client";
+import React, { useState } from "react";
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import axios from "axios";
+import { CHECK_CREDENTIALS } from "@/lib/apiEndPoints";
+import { toast } from "react-toastify";
+import { signIn } from "next-auth/react";
 
+export default function Login() {
+  const [loading, setLoading] = useState<boolean>(false);
+  const [authState, setAuthState] = useState<AuthStateType>({
+    email: "",
+    password: "",
+  });
+  const [errors, setErrors] = useState({
+    email: [],
+    password: [],
+  });
 
-const Login = () => {
-    return (
-        <Card className="">
-            <CardHeader>
-                <CardTitle>Welcome back!</CardTitle>
-                <CardDescription>Log in to access your account</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <form>
-                    <div className="grid w-full items-center gap-4">
-                        <div className="flex flex-col space-y-1.5">
-                            <Label htmlFor="email">Email Address</Label>
-                            <Input id="email" placeholder="john.doe@example.com" />
-                        </div>
-                        <div className="flex flex-col space-y-1.5">
-                            <Label htmlFor="password">Password</Label>
-                            <Input id="password" placeholder="*************" />
-                        </div>
-                        <div>
-                            <Button variant="default" className="w-full">Login Now</Button>
-                        </div>
-                    </div>
-                </form>
-            </CardContent>
-        </Card>
-    )
+  const handleSubmit = (event: React.FormEvent) => {
+    console.log("first")
+    event.preventDefault();
+    setLoading(true);
+    axios
+      .post(CHECK_CREDENTIALS, authState, {
+        headers: {
+          Accept: "application/json",
+        },
+      })
+      .then((res) => {
+        const response = res.data;
+        setLoading(false);
+        if (response?.status == 200) {
+          signIn("credentials", {
+            email: authState.email,
+            password: authState.password,
+            redirect: true,
+            callbackUrl: "/",
+          });
+        } else if (response?.status == 401) {
+          toast.error(response?.message, { theme: "colored" });
+        }
+      })
+      .catch((err) => {
+        setLoading(false);
+        setErrors(err?.response?.data?.errors);
+      });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Login</CardTitle>
+        <CardDescription>Welcome back!</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <form>
+          <div className="space-y-1">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="Type your email.."
+              onChange={(e) =>
+                setAuthState({ ...authState, email: e.target.value })
+              }
+            />
+            <span className="text-red-500">{errors?.email?.[0]}</span>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              placeholder="Type your password.."
+              type="password"
+              onChange={(e) =>
+                setAuthState({ ...authState, password: e.target.value })
+              }
+            />
+            <span className="text-red-500">{errors?.password?.[0]}</span>
+          </div>
+          <div className="mt-4">
+            <Button className="w-full" disabled={loading} onClick={handleSubmit}>
+              {" "}
+              {loading ? "Processing.." : "Login"}{" "}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
 }
-
-export default Login;
